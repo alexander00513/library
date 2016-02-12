@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -18,10 +20,11 @@ import java.util.List;
 /**
  * Created by alexander on 12.02.16.
  */
-//TODO will be refactored in future
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = LibraryApplication.class)
 public class BookControllerTest {
+
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     @Autowired
     private BookController bookController;
@@ -29,7 +32,7 @@ public class BookControllerTest {
     private Catalog catalog = new Catalog();
 
     @Before
-    public void setUp() {
+    public void setUp() throws ParseException {
         @SuppressWarnings("unchecked")
         List<Book> books = new ArrayList(2);
 
@@ -49,11 +52,12 @@ public class BookControllerTest {
         book1.setTitle("title2");
         book1.setGenre("genre2");
         book1.setPrice(Float.parseFloat("2"));
-        book1.setPublishDate(new Date());
+        book1.setPublishDate(dateFormat.parse("2015-05-14"));
         book1.setDescription("description2");
         books.add(book1);
 
         catalog.setBooks(books);
+        save(catalog);
     }
 
     @Test
@@ -68,48 +72,71 @@ public class BookControllerTest {
         book.setDescription("description3");
         this.catalog.getBooks().add(book);
 
-        Catalog catalog = bookController.changeBook(this.catalog);
+        Catalog catalog = save(this.catalog);
         Assert.assertNotNull(catalog);
         Assert.assertNotEquals(0, catalog.getBooks().size());
-        long count = catalog.getBooks().stream().filter(e -> e.getId().equals(book.getId())).count();
-        Assert.assertEquals(1L, count);
+        Assert.assertEquals(3, catalog.getBooks().size());
     }
 
     @Test
     public void testFind() {
-        Catalog catalog = bookController.changeBook(null);
+        Catalog catalog = find();
         Assert.assertNotNull(catalog);
         Assert.assertNotEquals(0, catalog.getBooks().size());
+        Assert.assertEquals(2, catalog.getBooks().size());
     }
 
     @Test
-    public void testUpdate() {
-        Catalog catalog = bookController.changeBook(null);
+    public void testUpdate() throws ParseException {
+        Catalog catalog = find();
         Book book = catalog.getBooks().get(1);
         Assert.assertEquals("2", book.getId());
         Assert.assertEquals("author2", book.getAuthor());
         Assert.assertEquals("title2", book.getTitle());
         Assert.assertEquals("genre2", book.getGenre());
+        Assert.assertEquals(2f, book.getPrice(), 0);
+        Assert.assertEquals("2015-05-14", dateFormat.format(book.getPublishDate()));
+        Assert.assertEquals("description2", book.getDescription());
 
         List<Book> books = this.catalog.getBooks();
         Book newBook = books.get(1);
         newBook.setAuthor("author2-upd");
         newBook.setTitle("title2-upd");
         newBook.setGenre("genre2-upd");
+        newBook.setPrice(Float.parseFloat("8"));
+        newBook.setPublishDate(dateFormat.parse("2015-05-28"));
+        newBook.setDescription("description2-upd");
 
-        catalog = bookController.changeBook(this.catalog);
+        catalog = save(this.catalog);
         book = catalog.getBooks().get(1);
         Assert.assertEquals("2", book.getId());
         Assert.assertEquals("author2-upd", book.getAuthor());
         Assert.assertEquals("title2-upd", book.getTitle());
         Assert.assertEquals("genre2-upd", book.getGenre());
+        Assert.assertEquals(8f, book.getPrice(), 0);
+        Assert.assertEquals("2015-05-28", dateFormat.format(book.getPublishDate()));
+        Assert.assertEquals("description2-upd", book.getDescription());
     }
 
     @Test
     public void testDelete() {
-        Catalog catalog = bookController.changeBook(this.catalog);
+        Catalog catalog = find();
         Assert.assertNotNull(catalog);
         Assert.assertNotEquals(0, catalog.getBooks().size());
         Assert.assertEquals(2, catalog.getBooks().size());
+        this.catalog.getBooks().remove(1);
+
+        catalog = save(this.catalog);
+        Assert.assertNotNull(catalog);
+        Assert.assertNotEquals(0, catalog.getBooks().size());
+        Assert.assertEquals(1, catalog.getBooks().size());
+    }
+
+    private Catalog find() {
+        return bookController.changeBook(null);
+    }
+
+    private Catalog save(Catalog catalog) {
+        return bookController.changeBook(catalog);
     }
 }
